@@ -52,6 +52,8 @@ public class MIPSReader {
         opPat = builder.toString();
     }
 
+
+    // This is where we parse our MIPS file
     public MIPSProgram parseMIPSFile(String filename) throws IOException {
         BufferedReader reader;
 

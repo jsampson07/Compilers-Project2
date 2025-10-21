@@ -125,6 +125,14 @@ public class IRInterpreter {
         }
     }
 
+    //Creates some set of instructions
+
+    //Look at IRInstruction.java 
+
+    //Iterate through array of instructions
+
+    //IRInterpreter and IRInstruction
+
     public void run() throws IRException {
         // Add an entry call to main
         IRFunctionOperand mainFunctionOperand = new IRFunctionOperand("main", null);
@@ -146,8 +154,8 @@ public class IRInterpreter {
         stdinScanner = new Scanner(System.in);
 
         while (true) {
-            IRInstruction instruction = pc.next();
-            executeInstruction(instruction);
+            IRInstruction instruction = pc.next(); //gets each instruction
+            executeInstruction(instruction); //executes the instruction
 
             if (!pc.hasNext()) {
                 // Return from a procedure
