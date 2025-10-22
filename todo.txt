@@ -1,0 +1,5 @@
+1. work on ASSIGN if 3 operands (initializing an array)
+2. implement CALL and CALLR logic
+3. check in find_frame_size if we are correct with our "# of arguments" work
+
+THEN DONE WITH THIS PART and just TEST !!!!!

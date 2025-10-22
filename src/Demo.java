@@ -173,9 +173,23 @@ public class Demo {
         //NOTE: frame_size - 8 is offset for frame pointer
         MIPSInstruction store_frame_ptr = new MIPSInstruction(MIPSOp.SW, null, fp, new Addr(new Imm("" + (frame_size-8), "DEC"), sp));
         mips_program.instructions.put(curr_line_num, store_frame_ptr);
+        curr_line_num++;
+
+
+        /* THIS IS WRONG BECAUSE WE WANT OUR $FP to be $SP when our function executes
+
+
         // let's now set our frame pointer for our function ("bottom" of the stack) --> pointing to saved $ra
         MIPSInstruction set_frame_ptr = new MIPSInstruction(MIPSOp.ADDI, null, fp, sp, new Imm("" + frame_size, "DEC"));
         mips_program.instructions.put(curr_line_num, set_frame_ptr);
+        curr_line_num++;
+        */ // SO INSTEAD...........
+
+        MIPSInstruction set_frame_ptr = new MIPSInstruction(MIPSOp.MOVE, null, fp, sp);
+        mips_program.instructions.put(curr_line_num, set_frame_ptr);
+        curr_line_num++;
+
+
 
         // now we need to store the local vars and arguments onto the stack
 
@@ -210,7 +224,7 @@ public class Demo {
                 mips_program.instructions.put(curr_line_num, label_instruc);
                 curr_line_num++;
             } else {
-                translate_ir_mips(instruc, mips_program, curr_line_num, function, frame_size);
+                translate_ir_mips(instruc, mips_program, function, frame_size);
             }
         }
     }
@@ -246,12 +260,12 @@ public class Demo {
         return total_size; // this is to make sure the frame is aligned
     }
 
-    public void translate_ir_mips(IRInstruction instruc, MIPSProgram mips_program, int curr_line_num, IRFunction function, int frame_size) {
+    public void translate_ir_mips(IRInstruction instruc, MIPSProgram mips_program, IRFunction function, int frame_size) {
         MIPSInstruction translated_instruc;
         switch (instruc.opCode) {
             // this can be either array related or just assigning a value
             case ASSIGN:
-                if (instruc.operands.length < 2) {
+                if (instruc.operands.length == 2) {
                     // then we have a regular assign
                     if (instruc.operands[1] instanceof IRConstantOperand) {
                         String value = ((IRConstantOperand) instruc.operands[2]).toString();
@@ -269,13 +283,28 @@ public class Demo {
                     }
                 } else {
                     // we have an array !!! SPECIAL CASE !!!!!!!
+                    /* 
+                     op, x , size, value
+                     i.e. if ASSIGN, X, 100, 10:
+                        ==> CODE:
+                                type ArrayInt = array[100] of int;
+                                var X : ArrayInt := 10;
+                            10 is the value we assign to all elements of array X
+                            and we have 100 elements
+                        op, x, size, value
+                            x: variable that will hold the array
+                            size: # of elements the array has
+                            value: the value for each element of the array when initialized
+                     */
                 }
                 curr_line_num++;
                 break;
             //these are all arithmetic operations
-            /* for add, and, or ==> check if any constant operands if so ==> ADDI, ANDI, ORI */
+            /* for add, and, or ==> check if any constant operands if so ==> ADDI, ANDI, ORI 
+             * EDIT: NOTE THAT according to Tiger-IR manual... FIRST OPERAND MUST BE A VARIABLE --> so if constant, MUST be operand 2 !!!!!!
+            */
             case AND:
-                if (instruc.operands[1] instanceof IRConstantOperand || instruc.operands[2] instanceof IRConstantOperand) {
+                if (instruc.operands[2] instanceof IRConstantOperand) {
                     String value = ((IRConstantOperand) instruc.operands[2]).toString();
                     String type;
                     if (value.startsWith("0x")) {
@@ -289,9 +318,10 @@ public class Demo {
                     translated_instruc = new MIPSInstruction(MIPSOp.AND, null, new Register(instruc.operands[0].toString()), new Register(instruc.operands[1].toString()), new Register(instruc.operands[2].toString()));
                     mips_program.instructions.put(curr_line_num, translated_instruc);
                 }
+                curr_line_num++;
                 break;
             case OR:
-                if (instruc.operands[1] instanceof IRConstantOperand || instruc.operands[2] instanceof IRConstantOperand) {
+                if (instruc.operands[2] instanceof IRConstantOperand) {
                     String value = ((IRConstantOperand) instruc.operands[2]).toString();
                     String type;
                     if (value.startsWith("0x")) {
@@ -305,9 +335,10 @@ public class Demo {
                     translated_instruc = new MIPSInstruction(MIPSOp.OR, null, new Register(instruc.operands[0].toString()), new Register(instruc.operands[1].toString()), new Register(instruc.operands[2].toString()));
                     mips_program.instructions.put(curr_line_num, translated_instruc);
                 }
+                curr_line_num++;
                 break;
             case ADD:
-                if (instruc.operands[1] instanceof IRConstantOperand || instruc.operands[2] instanceof IRConstantOperand) {
+                if (instruc.operands[2] instanceof IRConstantOperand) {
                     String value = ((IRConstantOperand) instruc.operands[2]).toString();
                     String type;
                     if (value.startsWith("0x")) {
@@ -321,30 +352,38 @@ public class Demo {
                     translated_instruc = new MIPSInstruction(MIPSOp.ADD, null, new Register(instruc.operands[0].toString()), new Register(instruc.operands[1].toString()), new Register(instruc.operands[2].toString()));
                     mips_program.instructions.put(curr_line_num, translated_instruc);
                 }
+                curr_line_num++;
                 break;
             case SUB:
                 translated_instruc = new MIPSInstruction(MIPSOp.SUB, null, new Register(instruc.operands[0].toString()), new Register(instruc.operands[1].toString()), new Register(instruc.operands[2].toString()));
                 mips_program.instructions.put(curr_line_num, translated_instruc);
+                curr_line_num++;
                 break;
             case MULT:
                 translated_instruc = new MIPSInstruction(MIPSOp.MUL, null, new Register(instruc.operands[0].toString()), new Register(instruc.operands[1].toString()), new Register(instruc.operands[2].toString()));
                 mips_program.instructions.put(curr_line_num, translated_instruc);
+                curr_line_num++;
                 break;
             case DIV:
                 translated_instruc = new MIPSInstruction(MIPSOp.DIV, null, new Register(instruc.operands[0].toString()), new Register(instruc.operands[1].toString()), new Register(instruc.operands[2].toString()));
                 mips_program.instructions.put(curr_line_num, translated_instruc);
+                curr_line_num++;
                 break;
             // these are all array operations
             // for array indexing, we may care about SLL because we want to access (index * size of types stored)
                 // i.e. ==> arr[1] = arr[1*sizeof(int)] or something like that
             // here we use t0 as temporary register
+
+            // this is ARRAY_STORE: op , x, array_name, offset
+                // operand[0] = x (value), operand[1] = array_base_addr, operand[2] = offset
+
             case ARRAY_STORE:
-                Addr base_addr_as = new Addr(instruc.operands[0].toString());
-                Register index_as = new Register(instruc.operands[1].toString());
-                Register value_as = new Register(instruc.operands[2].toString());
+                Register value_as = new Register(instruc.operands[0].toString());
+                Register base_addr_as = new Register(instruc.operands[1].toString());
+                Register offset_as = new Register(instruc.operands[2].toString());
                 Register t0_as = new Register("$t0", false);
 
-                translated_instruc = new MIPSInstruction(MIPSOp.SLL, null, t0_as, index_as, new Imm("2", "DEC"));
+                translated_instruc = new MIPSInstruction(MIPSOp.SLL, null, t0_as, offset_as, new Imm("2", "DEC")); // this is to account for the size of data
                 mips_program.instructions.put(curr_line_num, translated_instruc);
                 curr_line_num++;
 
@@ -352,18 +391,20 @@ public class Demo {
                 mips_program.instructions.put(curr_line_num, add_as);
                 curr_line_num++;
 
-                Addr addr_from_as = new Addr(new Imm("0", "DEC"), t0_as)
-                MIPSInstruction sw_instruc_as = new MIPSInstruction(MIPSOp.SW, null, value_as, addr_from_as, t0_as);
+                //Addr addr_from_as = new Addr(new Imm("0", "DEC"), t0_as);
+                MIPSInstruction sw_instruc_as = new MIPSInstruction(MIPSOp.SW, null, value_as, new Addr(new Imm("0", "DEC"), t0_as));//, addr_from_as);//addr_from_as, t0_as);
                 mips_program.instructions.put(curr_line_num, sw_instruc_as);
                 curr_line_num++;
                 break;
+            //this is ARRAY_LOAD: op, x, array_base, offset
+                // operand[0] = x (value) ==> we are setting this variable to the following, operand[1] = array_base, operand[2] = offset (i.e. index)
             case ARRAY_LOAD:
                 Register destination_al = new Register(instruc.operands[0].toString());
-                Addr base_addr_al = new Addr(instruc.operands[1].toString());
-                Register index_al = new Register(instruc.operands[2].toString());
+                Register base_addr_al = new Register(instruc.operands[1].toString());
+                Register offset_al = new Register(instruc.operands[2].toString());
                 Register t0_al = new Register("$t0", false);
 
-                translated_instruc = new MIPSInstruction(MIPSOp.SLL, null, t0_al, index_al, new Imm("2", "DEC"));
+                translated_instruc = new MIPSInstruction(MIPSOp.SLL, null, t0_al, offset_al, new Imm("2", "DEC")); // this is to account for the size of data
                 mips_program.instructions.put(curr_line_num, translated_instruc);
                 curr_line_num++;
 
@@ -417,22 +458,26 @@ public class Demo {
                     MIPSInstruction move_sp = new MIPSInstruction(MIPSOp.MOVE, null, new Register("$sp"), new Register("$fp"));
                     mips_program.instructions.put(curr_line_num, move_sp);
                     curr_line_num++;
+
                     // get the return addrress and place into $ra
-                    Imm return_offset = new Imm("" + (frame_size - 4), "DEC");
-                    MIPSInstruction load_ret_addr = new MIPSInstruction(MIPSOp.LW, null, new Register("$ra"), new Addr(return_offset, new Register("$sp")));
+                    Imm return_offset = new Imm("" + (frame_size - 4 ), "DEC");
+                    MIPSInstruction load_ret_addr = new MIPSInstruction(MIPSOp.LW, null, new Register("$ra", false), new Addr(return_offset, new Register("$sp", false)));
                     mips_program.instructions.put(curr_line_num, load_ret_addr);
                     curr_line_num++;
 
                     //now we want to restore the frame pointer to the previous call frame
-                    Imm frame_offset = new Imm("" + (frame_size-8), "DEC");
-                    MIPSInstruction restore_fp = new MIPSInstruction(MIPSOp.MOVE, null, new Register("$fp"), new Addr(frame_offset), new Register("$sp"));
+                    Imm frame_offset = new Imm("" + (frame_size - 8), "DEC");
+                    MIPSInstruction restore_fp = new MIPSInstruction(MIPSOp.LW, null, new Register("$fp"), new Addr(frame_offset, new Register("$sp"))); // prev fp
                     mips_program.instructions.put(curr_line_num, restore_fp);
                     curr_line_num++;
 
+
                     // now we want to finally reset the stack pointer to the "caller's" stack pointer before returning control flow back to it
                     Imm restore_sp = new Imm("" + (frame_size), "DEC"); // our current frame is frame_size so if we add by this amount, we will get to the "top" (bottom, since grows downwards) of the stack
-                    MIPSInstruction old_sp = new MIPSInstruction(new Register("$sp"), new Register("$sp"), restore_sp);
+                    MIPSInstruction old_sp = new MIPSInstruction(MIPSOp.ADDI, null, new Register("$sp"), new Register("$sp"), restore_sp);
+                    mips_program.instructions.put(curr_line_num, old_sp);
                     curr_line_num++;
+
 
                     // now that we have restored stack values into respective registers, we can jump back to the return address we have in $ra
                     MIPSInstruction jump_to = new MIPSInstruction(MIPSOp.JR, null, new Register("$ra"));
@@ -467,7 +512,7 @@ public class Demo {
                     new Addr(instruc.operands[2].toString())
                 );
                 mips_program.instructions.put(curr_line_num, translated_instruc);
-                curr_line_num;
+                curr_line_num++;
                 break;
             case BRGT:
                 translated_instruc = new MIPSInstruction(MIPSOp.BGT, null,
@@ -476,7 +521,7 @@ public class Demo {
                     new Addr(instruc.operands[2].toString())
                 );
                 mips_program.instructions.put(curr_line_num, translated_instruc);
-                curr_line_num;
+                curr_line_num++;
                 break;
             case BRGEQ:
                 translated_instruc = new MIPSInstruction(MIPSOp.BGE, null,
@@ -485,6 +530,7 @@ public class Demo {
                     new Addr(instruc.operands[2].toString())
                 );
                 mips_program.instructions.put(curr_line_num, translated_instruc);
+                curr_line_num++;
                 break;
             default:
                 break;
